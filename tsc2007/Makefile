@@ -2,7 +2,7 @@
 # A little Makefile to build the patched kernel module for the touch driver of BTT TFT35-SPI
 # author: Hartmut Stadie  Dec 2023
 #
-OLD_KVER := $(shell echo "`uname -r | cut -d'.' -f 1,2` - 6.3 < 0" | /usr/bin/bc -l)
+OLD_KVER := $(shell dpkg  --compare-versions `uname -r | cut -d'.' -f 1,2` ge 6.3; echo $$?)
 # Build options
 obj-m += tsc2007.o
 
@@ -32,8 +32,10 @@ clean_code: clean
 get_code:  tsc2007_core.c  tsc2007.h tsc2007_iio.c
 
 tsc2007_core.c: tsc2007_core_patch.diff
+	@echo "old kernel version: $(OLD_KVER)"
 	wget $(BTT_CODE)/drivers/input/touchscreen/tsc2007_core.c
 ifeq ($(OLD_KVER), 0)
+	@echo "patching drivers for newer kernel"
 	@patch < tsc2007_core_patch.diff
 endif
 
