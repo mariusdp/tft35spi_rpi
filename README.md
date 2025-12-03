@@ -131,5 +131,8 @@ dmesg
 sudo vcdbg log msg
 ```
 
+## Aditional
+To get KlipperScreen working edit '99-myfb.conf' and replace with user correct '/dev/FB_' of the display, and move it to '/usr/share/X11/xorg.conf.d/'.
+
 ## Acknowledgements
 I like to thank Stenberggg on github for trying this setup on a raspberry pi 5. Fragmon@Crydteam on discord tried this on a CM4 and a Manta board and connect the display to the FCC port. He has also helped a lot in figuring out the correct pins. 
