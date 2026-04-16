@@ -134,6 +134,7 @@ sudo vcdbg log msg
 ## Aditional
 #Integrate correct fb:
 To get KlipperScreen working edit '99-myfb.conf' and replace with user correct '/dev/FB_' of the display, and move it to '/usr/share/X11/xorg.conf.d/'.
+
 #Example (99-fbdev.conf)
 ```
 Section "Device"
@@ -240,21 +241,28 @@ Use command below to add executable permissions
 ```
 sudo chmod +x libinput_calibrator.sh
 ```
+
 Then run libinput_calibrator.sh to convert calibration parameters
 ```
 sudo ./libinput_calibrator.sh <screen width> <screen height> <click_0 X> <click_0 Y> <click_3 X> <click_3 Y>
 ```
 Screen horizontal resolution, TFT35 SPI is 480
+
 Screen vertical resolution, TFT35 SPI is 320
+
 <click_0 X>: The X position of click 0 during the previous step calibration
+
 <click_0 Y>: The Y position of click 0 during the previous step calibration
+
 <click_3 X>: The X position of click 3 during the previous step calibration
+
 <click_3 Y>: The Y position of click 3 during the previous step calibration
 
 Example:
 ```
 sudo ./libinput_calibrator.sh 480 320 61 35 417 281
 ```
+
 The script will automatically convert and write parameters to the configuration file, and then reset KlipperScreen if installed. You can check whether the configuration is effective through the command
 ```
 DISPLAY=:0 xinput list-prop
