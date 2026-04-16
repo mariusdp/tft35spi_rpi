@@ -132,7 +132,132 @@ sudo vcdbg log msg
 ```
 
 ## Aditional
+#Integrate correct fb:
 To get KlipperScreen working edit '99-myfb.conf' and replace with user correct '/dev/FB_' of the display, and move it to '/usr/share/X11/xorg.conf.d/'.
+#Example (99-fbdev.conf)
+```
+Section "Device"
+Identifier "LCD"
+Driver "fbdev"
+Option "fbdev" "/dev/fb0"
+Option "Rotate" "180"
+Option "SwapbuffersWait" "true"
+EndSection
+```
 
+#Touch driver calibration and rotation:
+```
+sudo apt update
+sudo apt install xinput-calibrator
+```
+Find ID of touchscreen
+```
+DISPLAY=:0 xinput_calibrator --list
+```
+Start Calibration
+```
+DISPLAY=:0 xinput_calibrator -v --device <id>
+```
+Convert to libinput
+```
+nano libinput_calibrator.sh
+```
+Paste the following into libinput_calibrator.sh
+```
+#!/bin/bash
+
+screen_width=$1
+screen_height=$2
+click_0_X=$3
+click_0_Y=$4
+click_3_X=$5
+click_3_Y=$6
+
+re='^[0-9]+$'
+if ! [[ $screen_width =~ $re ]] ; then
+  echo "error: screen_width=\"$screen_width\" Not a number" >&2; exit 1
+fi
+if ! [[ $screen_height =~ $re ]] ; then
+  echo "error: screen_height=\"$screen_height\" Not a number" >&2; exit 1
+fi
+if ! [[ $click_0_X =~ $re ]] ; then
+  echo "error: click_0_X=\"$click_0_X\" Not a number" >&2; exit 1
+fi
+if ! [[ $click_0_Y =~ $re ]] ; then
+  echo "error: click_0_Y=\"$click_0_Y\" Not a number" >&2; exit 1
+fi
+if ! [[ $click_3_X =~ $re ]] ; then
+  echo "error: click_3_X=\"$click_3_X\" Not a number" >&2; exit 1
+fi
+if ! [[ $click_3_Y =~ $re ]] ; then
+  echo "error: click_3_Y=\"$click_3_Y\" Not a number" >&2; exit 1
+fi
+
+#a = (screen_width * 6 / 8) / (click_3_X - click_0_X)
+#c = ((screen_width / 8) - (a * click_0_X)) / screen_width
+#e = (screen_height * 6 / 8) / (click_3_Y - click_0_Y)
+#f = ((screen_height / 8) - (e * click_0_Y)) / screen_height
+
+a=$(awk "BEGIN { printf(\"%.6f\", ($screen_width * 6 / 8) / ($click_3_X - $click_0_X))}")
+c=$(awk "BEGIN { printf(\"%.6f\", (($screen_width / 8) - ($a * $click_0_X)) / $screen_width)}")
+e=$(awk "BEGIN { printf(\"%.6f\", ($screen_height * 6 / 8) / ($click_3_Y - $click_0_Y))}")
+f=$(awk "BEGIN { printf(\"%.6f\", (($screen_height / 8) - ($e * $click_0_Y)) / $screen_height)}")
+
+CONFIG_OPTION="Option \"CalibrationMatrix\" "
+CONFIG_LINE="\"$a 0.000000 $c 0.000000 $e $f 0.000000 0.000000 1.000000\""
+
+echo "${CONFIG_OPTION}${CONFIG_LINE}"
+echo ""
+
+CONFIG_OPTION="Option \"CalibrationMatrix\" "
+CONFIG="/usr/share/X11/xorg.conf.d/40-libinput.conf"
+INPUT_CLASS="Identifier \"libinput touchscreen catchall\""
+if [ -e "${CONFIG}" ]; then
+    ks_restart=0
+    grep -e "^\        ${CONFIG_OPTION}${CONFIG_LINE}" ${CONFIG} > /dev/null
+    STATUS=$?
+    if [ $STATUS -eq 1 ]; then
+        sudo sed -i "/${CONFIG_OPTION}/d" ${CONFIG}
+        sudo sed -i "/${INPUT_CLASS}/a\        ${CONFIG_OPTION}${CONFIG_LINE}" ${CONFIG}
+        echo "Written to file:"
+        echo "    ${CONFIG}"
+        echo ""
+        ks_restart=1
+    fi
+
+    # restart KlipperScreen
+    if [ ${ks_restart} -eq 1 ];then
+        sudo service KlipperScreen restart
+    fi
+
+    echo "run:"
+    echo "    DISPLAY=:0 xinput list-props <device>"
+    echo "to check if the calibration parameters are effective"
+    echo ""
+fi
+```
+Use command below to add executable permissions
+```
+sudo chmod +x libinput_calibrator.sh
+```
+Then run libinput_calibrator.sh to convert calibration parameters
+```
+sudo ./libinput_calibrator.sh <screen width> <screen height> <click_0 X> <click_0 Y> <click_3 X> <click_3 Y>
+```
+Screen horizontal resolution, TFT35 SPI is 480
+Screen vertical resolution, TFT35 SPI is 320
+<click_0 X>: The X position of click 0 during the previous step calibration
+<click_0 Y>: The Y position of click 0 during the previous step calibration
+<click_3 X>: The X position of click 3 during the previous step calibration
+<click_3 Y>: The Y position of click 3 during the previous step calibration
+
+Example:
+```
+sudo ./libinput_calibrator.sh 480 320 61 35 417 281
+```
+The script will automatically convert and write parameters to the configuration file, and then reset KlipperScreen if installed. You can check whether the configuration is effective through the command
+```
+DISPLAY=:0 xinput list-prop
+```
 ## Acknowledgements
 I like to thank Stenberggg on github for trying this setup on a raspberry pi 5. Fragmon@Crydteam on discord tried this on a CM4 and a Manta board and connect the display to the FCC port. He has also helped a lot in figuring out the correct pins. 
